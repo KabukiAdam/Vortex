@@ -18,16 +18,43 @@ public struct VortexView<Symbols>: View where Symbols: View {
     /// The ideal frame rate for updating particles. Using lower frame rates saves CPU time.
     public var targetFrameRate: Int
 
+    public var isPaused: Bool
+    @State var pausedDate: Date? = nil
+
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / Double(targetFrameRate))) { timeline in
-            Canvas { context, size in
-                particleSystem.update(date: timeline.date, drawSize: size)
-                draw(particleSystem, into: context, at: size)
-            } symbols: {
-                symbols
+
+        Group {
+            if let pausedDate {
+                Canvas { context, size in
+                    particleSystem.update(date: pausedDate, drawSize: size)
+                    draw(particleSystem, into: context, at: size)
+                } symbols: {
+                    symbols
+                }
+            }
+            else {
+                TimelineView(.animation(minimumInterval: 1 / Double(targetFrameRate))) { timeline in
+                    Canvas { context, size in
+                        particleSystem.update(date: timeline.date, drawSize: size)
+                        draw(particleSystem, into: context, at: size)
+                    } symbols: {
+                        symbols
+                    }
+                }
+
             }
         }
         .preference(key: VortexSystemPreferenceKey.self, value: particleSystem)
+        .onChange(of: isPaused) { oldValue, newValue in
+            if oldValue && !newValue {
+                pausedDate = Date()
+            }
+            else if !oldValue && newValue {
+                particleSystem.lastUpdate = Date().timeIntervalSince1970
+                particleSystem.lastIdleTime = particleSystem.lastUpdate
+                pausedDate = nil
+            }
+        }
     }
 
     /// Creates a new VortexView from a pre-configured particle system, along with all the SwiftUI
@@ -35,9 +62,10 @@ public struct VortexView<Symbols>: View where Symbols: View {
     /// - Parameters:
     ///   - system: The primary particle system you want to render.
     ///   - symbols: A list of SwiftUI views to use as particles.
-    public init(_ system: VortexSystem, targetFrameRate: Int = 60, @ViewBuilder symbols: () -> Symbols) {
+    public init(_ system: VortexSystem, targetFrameRate: Int = 60, isPaused: Bool = false, @ViewBuilder symbols: () -> Symbols) {
         _particleSystem = State(initialValue: system)
         self.targetFrameRate = targetFrameRate
+        self.isPaused = isPaused
         self.symbols = symbols()
     }
 
