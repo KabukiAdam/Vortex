@@ -41,15 +41,14 @@ public struct VortexView<Symbols>: View where Symbols: View {
                         symbols
                     }
                 }
-
             }
         }
         .preference(key: VortexSystemPreferenceKey.self, value: particleSystem)
         .onChange(of: isPaused) { oldValue, newValue in
-            if oldValue && !newValue {
+            if !oldValue && newValue {
                 pausedDate = Date()
             }
-            else if !oldValue && newValue {
+            else if oldValue && !newValue {
                 particleSystem.lastUpdate = Date().timeIntervalSince1970
                 particleSystem.lastIdleTime = particleSystem.lastUpdate
                 pausedDate = nil
